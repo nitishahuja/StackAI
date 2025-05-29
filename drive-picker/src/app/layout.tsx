@@ -16,8 +16,8 @@ export const metadata: Metadata = {
   title: "Stack AI Drive Picker",
   description: "Connect and manage your drive resources with Stack AI",
   icons: {
-    icon: "/logo-favicon.svg",
-    apple: "/logo-favicon.svg",
+    icon: "/logo-favicon.png",
+    apple: "/logo-favicon.png",
   },
 };
 
@@ -28,6 +28,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <link rel="icon" href="/logo-favicon.svg" type="image/svg+xml" />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         suppressHydrationWarning
