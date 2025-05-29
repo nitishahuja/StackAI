@@ -83,6 +83,7 @@ export default function DashboardPage() {
 
   const handleConnectionChange = (newConnectionId: string) => {
     setConnectionId(newConnectionId);
+    useFilePickerStore.getState().reset();
   };
 
   // --- Render Logic ---

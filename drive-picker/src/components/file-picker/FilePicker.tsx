@@ -255,21 +255,32 @@ export function FilePicker({ connectionId }: FilePickerProps) {
         <div className="flex items-center gap-2 px-4 py-3 border-b bg-gray-50/50">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button size="sm" variant="outline" className="pr-8 h-8 text-sm">
+              <Button
+                size="sm"
+                variant="outline"
+                className={cn(
+                  "pr-8 h-8 text-sm bg-white border border-gray-200 shadow-sm",
+                  "relative z-10",
+                  typeFilter !== "all" && "ring-2 ring-blue-200"
+                )}
+              >
                 <Filter className="h-4 w-4 mr-2" />
                 {typeOptions.find((o) => o.value === typeFilter)?.label}
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start">
+            <DropdownMenuContent
+              align="start"
+              className="bg-white border border-gray-200 shadow-lg"
+            >
               {typeOptions.map((option) => (
                 <DropdownMenuItem
                   key={option.value}
                   onClick={() => setTypeFilter(option.value)}
-                  className={
-                    typeFilter === option.value
-                      ? "font-semibold bg-gray-100"
-                      : ""
-                  }
+                  className={cn(
+                    "hover:bg-gray-100",
+                    typeFilter === option.value &&
+                      "font-semibold bg-blue-50 text-blue-700"
+                  )}
                 >
                   {option.label}
                 </DropdownMenuItem>
