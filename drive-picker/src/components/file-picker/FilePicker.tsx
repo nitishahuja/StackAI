@@ -493,7 +493,11 @@ export function FilePicker({ connectionId }: FilePickerProps) {
             !childrenError && (
               <div className="text-center text-gray-400 py-16 animate-fade-in">
                 <FolderIcon className="h-14 w-14 mx-auto mb-4 text-gray-300" />
-                <p className="text-lg">No files or folders found here.</p>
+                <p className="text-lg">
+                  No data found.
+                  <br />
+                  Try a different connection.
+                </p>
               </div>
             )}
 
