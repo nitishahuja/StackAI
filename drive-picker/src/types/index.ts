@@ -92,15 +92,24 @@ export interface GoogleDriveConnection {
 
 export interface FileResource {
   resource_id: string;
+  inode_type: "file" | "directory";
   inode_path: {
     path: string;
   };
-  inode_type: "file" | "directory";
+  knowledge_base_id: string | null;
+  dataloader_metadata?: {
+    content_mime?: string;
+    last_modified_at?: string;
+    last_modified_by?: string | null;
+    created_at?: string;
+    created_by?: string;
+    web_url?: string;
+    path?: string;
+  };
   size?: number;
   modified_time?: string;
   mime_type?: string;
   user_metadata?: Record<string, string | number | boolean | null>;
-  knowledge_base_id?: string;
   indexed_at?: string | null;
   status?: "pending" | "indexed" | "failed" | "unknown";
 }

@@ -13,11 +13,15 @@ interface FilePickerState {
   resources: FileResourceWithExpanded[];
   breadcrumbs: { id: string | null; name: string }[];
   currentFolderId: string | null;
+  currentConnectionId: string | null;
   error: string | null;
 
   // Actions
   setResources: (resources: FileResourceWithExpanded[]) => void;
   setError: (error: string | null) => void;
+  setBreadcrumbs: (breadcrumbs: { id: string | null; name: string }[]) => void;
+  setCurrentFolderId: (id: string | null) => void;
+  setCurrentConnectionId: (id: string | null) => void;
   navigateToFolder: (folderId: string | null, folderName: string) => void;
   reset: () => void;
 
@@ -48,6 +52,7 @@ export const useFilePickerStore = create<FilePickerState>()(
       resources: [],
       breadcrumbs: [{ id: null, name: "Root" }],
       currentFolderId: null,
+      currentConnectionId: null,
       error: null,
 
       setResources: (resources) =>
@@ -57,6 +62,12 @@ export const useFilePickerStore = create<FilePickerState>()(
         }),
 
       setError: (error) => set({ error }),
+
+      setBreadcrumbs: (breadcrumbs) => set({ breadcrumbs }),
+
+      setCurrentFolderId: (id) => set({ currentFolderId: id }),
+
+      setCurrentConnectionId: (id) => set({ currentConnectionId: id }),
 
       navigateToFolder: (folderId, folderName) =>
         set((state) => {

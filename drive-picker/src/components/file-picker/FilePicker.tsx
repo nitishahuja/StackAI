@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
-import { FileResource } from "@/types";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import {
   useFilePickerStore,
   FileResourceWithExpanded,
@@ -9,7 +8,8 @@ import {
 import { useFolderResources } from "@/hooks/useFolderResources";
 import { useFolderChildren } from "@/hooks/useFolderChildren";
 import { useIndexingStore } from "@/store/indexing.store";
-import { isFileIndexed } from "@/lib/apis";
+import { isFileIndexed, createKnowledgeBase, removeFromKB } from "@/lib/api";
+import { useAuthStore } from "@/store/auth.store";
 
 import {
   Table,
@@ -37,12 +37,13 @@ import {
   ArrowUpDown,
   Loader2,
   Filter,
+  PlusCircle,
+  Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface FilePickerProps {
-  onFileSelect?: (file: FileResource) => void;
-  selectedFiles?: Set<string>;
+  connectionId: string;
 }
 
 const typeOptions = [
@@ -68,17 +69,13 @@ const getIndentationLevel = (
   return level;
 };
 
-export function FilePicker({
-  onFileSelect,
-  selectedFiles = new Set(),
-}: FilePickerProps) {
+export function FilePicker({ connectionId }: FilePickerProps) {
   const {
     resources: allResources,
-    breadcrumbs,
     currentFolderId,
-    navigateToFolder,
     toggleFolderExpanded,
     addChildrenAndExpand,
+    setCurrentConnectionId,
   } = useFilePickerStore();
 
   const [expandingFolderId, setExpandingFolderId] = useState<string | null>(
@@ -88,6 +85,8 @@ export function FilePicker({
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
+  const [indexingFileId, setIndexingFileId] = useState<string | null>(null);
+  const [deletingFileId, setDeletingFileId] = useState<string | null>(null);
 
   const { isLoading: loadingRoot, error: rootError } = useFolderResources(
     currentFolderId ?? undefined
@@ -98,7 +97,16 @@ export function FilePicker({
     error: childrenError,
   } = useFolderChildren(expandingFolderId);
 
-  const { indexedResourceIds, addIndexedResource } = useIndexingStore();
+  const {
+    indexedResourceIds,
+    addIndexedResource,
+    removeIndexedResource,
+    setKnowledgeBaseId,
+  } = useIndexingStore();
+
+  useEffect(() => {
+    setCurrentConnectionId(connectionId);
+  }, [connectionId, setCurrentConnectionId]);
 
   useEffect(() => {
     if (fetchedChildren && expandingFolderId && !loadingChildren) {
@@ -123,16 +131,24 @@ export function FilePicker({
     }
   }, [childrenError, expandingFolderId]);
 
-  useEffect(() => {
-    const checkIndexStatus = async () => {
-      for (const resource of allResources) {
-        if (await isFileIndexed(resource.resource_id)) {
-          addIndexedResource(resource.resource_id);
-        }
+  const checkIndexStatus = useCallback(
+    async (resourceId: string) => {
+      if (await isFileIndexed(resourceId)) {
+        addIndexedResource(resourceId);
       }
-    };
-    checkIndexStatus();
-  }, [allResources, addIndexedResource]);
+    },
+    [addIndexedResource]
+  );
+
+  useEffect(() => {
+    const newResources = allResources.filter(
+      (resource) => !indexedResourceIds.has(resource.resource_id)
+    );
+
+    if (newResources.length > 0) {
+      checkIndexStatus(newResources[0].resource_id);
+    }
+  }, [allResources, indexedResourceIds, checkIndexStatus]);
 
   const handleSort = (column: string) => {
     if (sortBy === column) {
@@ -214,28 +230,27 @@ export function FilePicker({
     }
   };
 
+  const handleDelete = async (resource: FileResourceWithExpanded) => {
+    const kbId = useIndexingStore.getState().knowledgeBaseId;
+    if (!kbId) {
+      console.error("Knowledge Base ID is not available");
+      return;
+    }
+
+    setDeletingFileId(resource.resource_id);
+    try {
+      await removeFromKB(kbId, resource.inode_path.path);
+      removeIndexedResource(resource.resource_id);
+    } catch (error) {
+      console.error("Failed to remove file:", error);
+    } finally {
+      setDeletingFileId(null);
+    }
+  };
+
   return (
     <Card className="overflow-hidden rounded-lg border shadow-sm bg-white">
       <CardContent className="p-0">
-        {/* Breadcrumbs */}
-        <div className="flex items-center space-x-2 px-4 py-3 border-b bg-gray-50/50 overflow-x-auto">
-          {breadcrumbs.map((crumb, index) => (
-            <div key={crumb.id || "root"} className="flex items-center">
-              {index > 0 && (
-                <ChevronRight className="h-4 w-4 text-gray-400 shrink-0" />
-              )}
-              <Button
-                variant="ghost"
-                className="text-sm px-2 py-1 rounded-md hover:bg-gray-100 text-gray-600"
-                disabled={index === breadcrumbs.length - 1}
-                onClick={() => navigateToFolder(crumb.id, crumb.name)}
-              >
-                {crumb.name}
-              </Button>
-            </div>
-          ))}
-        </div>
-
         {/* Filter and Search */}
         <div className="flex items-center gap-2 px-4 py-3 border-b bg-gray-50/50">
           <DropdownMenu>
@@ -300,29 +315,30 @@ export function FilePicker({
                 <TableHead className="text-right w-[100px] font-semibold text-gray-700">
                   Size/Type
                 </TableHead>
+                <TableHead className="text-right w-[100px] font-semibold text-gray-700">
+                  Action
+                </TableHead>
               </TableRow>
             </TableHeader>
 
             <TableBody>
               {visibleResources.map((resource) => {
                 const indent = getIndentationLevel(resource, allResources);
-                const isSelected = selectedFiles.has(resource.resource_id);
                 const isLoading =
                   expandingFolderId === resource.resource_id && loadingChildren;
+                const isIndexing = indexingFileId === resource.resource_id;
+                const isDeleting = deletingFileId === resource.resource_id;
 
                 return (
                   <TableRow
                     key={resource.resource_id}
-                    onClick={() =>
-                      resource.inode_type === "directory"
-                        ? handleFolderClick(resource)
-                        : onFileSelect?.(resource)
-                    }
+                    onClick={() => {
+                      if (resource.inode_type === "directory") {
+                        handleFolderClick(resource);
+                      }
+                    }}
                     className={cn(
                       "cursor-pointer hover:bg-blue-50 transition-colors",
-                      isSelected &&
-                        resource.inode_type !== "directory" &&
-                        "bg-blue-100",
                       isLoading && "bg-gray-50/50",
                       indexedResourceIds.has(resource.resource_id) &&
                         "bg-green-100"
@@ -366,6 +382,75 @@ export function FilePicker({
                           ? `${(resource.size / 1024).toFixed(1)} KB`
                           : "---"
                         : "Folder"}
+                    </TableCell>
+
+                    <TableCell className="text-sm text-gray-500 text-right">
+                      {resource.inode_type === "file" && (
+                        <div className="flex items-center justify-end">
+                          {!indexedResourceIds.has(resource.resource_id) ? (
+                            <button
+                              className="text-blue-500 hover:text-blue-700"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                const orgId =
+                                  useAuthStore.getState().organizationId;
+                                if (!orgId) {
+                                  console.error(
+                                    "Organization ID is not available"
+                                  );
+                                  return;
+                                }
+                                setIndexingFileId(resource.resource_id);
+                                try {
+                                  const response = await createKnowledgeBase(
+                                    connectionId,
+                                    [resource.resource_id],
+                                    resource.inode_path.path,
+                                    "File indexed for search and retrieval",
+                                    orgId,
+                                    resource.dataloader_metadata
+                                      ?.content_mime ||
+                                      "application/octet-stream"
+                                  );
+                                  // Store the knowledge base ID in both the resource and the store
+                                  resource.knowledge_base_id =
+                                    response.knowledge_base_id;
+                                  setKnowledgeBaseId(
+                                    response.knowledge_base_id
+                                  );
+                                  addIndexedResource(resource.resource_id);
+                                } catch (error) {
+                                  console.error("Failed to index file:", error);
+                                } finally {
+                                  setIndexingFileId(null);
+                                }
+                              }}
+                              disabled={isIndexing}
+                            >
+                              {isIndexing ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <PlusCircle className="h-4 w-4" />
+                              )}
+                            </button>
+                          ) : (
+                            <button
+                              className="text-red-500 hover:text-red-700"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDelete(resource);
+                              }}
+                              disabled={isDeleting}
+                            >
+                              {isDeleting ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4" />
+                              )}
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </TableCell>
                   </TableRow>
                 );

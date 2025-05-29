@@ -35,7 +35,13 @@ export function useFolderResources(
   const { data, error, isLoading, mutate } = useSWR(
     swrKey,
     () => fetcher(swrKey as [string | null, string | null]),
-    { revalidateOnFocus: false }
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      dedupingInterval: 5000, // Dedupe requests within 5 seconds
+      cacheTime: 30000, // Cache for 30 seconds
+      shouldRetryOnError: false,
+    }
   );
 
   // Update the filePicker store whenever the data changes

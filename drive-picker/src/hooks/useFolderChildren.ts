@@ -31,7 +31,13 @@ export function useFolderChildren(
   const { data, error, isLoading } = useSWR(
     swrKey,
     () => fetcher(swrKey as [string, string]), // Cast is safe due to swrKey check
-    { revalidateOnFocus: false }
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      dedupingInterval: 5000, // Dedupe requests within 5 seconds
+      cacheTime: 30000, // Cache for 30 seconds
+      shouldRetryOnError: false,
+    }
   );
 
   const normalizedChildren = useMemo(

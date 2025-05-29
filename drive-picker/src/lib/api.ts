@@ -7,6 +7,7 @@ import {
   KnowledgeBase,
 } from "@/types";
 import { useAuthStore } from "@/store/auth.store";
+import { useIndexingStore } from "@/store/indexing.store";
 
 const API_BASE_URL = "https://api.stack-ai.com";
 const SUPABASE_AUTH_URL = "https://sb.stack-ai.com";
@@ -184,10 +185,13 @@ export async function createKnowledgeBase(
   resourceIds: string[],
   name: string,
   description: string,
-  organizationId: string
+  organizationId: string,
+  contentMime?: string
 ): Promise<CreateKnowledgeBaseResponse> {
   const authHeaders = useAuthStore.getState().authHeaders;
   if (!authHeaders) throw new Error("Not authenticated");
+
+  console.log("📚 Creating knowledge base...");
 
   const response = await fetch(`${API_BASE_URL}/knowledge_bases`, {
     method: "POST",
@@ -201,16 +205,16 @@ export async function createKnowledgeBase(
       name: name,
       description: description,
       org_id: organizationId,
-      // Include other necessary fields based on API spec/notebook
+      content_mime: contentMime,
       indexing_params: {
         ocr: false,
         unstructured: true,
-        embedding_params: { embedding_model: "text-embedding-ada-002" }, // Simplified
+        embedding_params: { embedding_model: "text-embedding-ada-002" },
         chunker_params: {
           chunk_size: 1500,
           chunk_overlap: 500,
           chunker_type: "sentence",
-        }, // Simplified
+        },
       },
     }),
   });
@@ -243,4 +247,129 @@ export async function deleteKnowledgeBaseResource(
     throw new Error(`Failed to delete resource: ${response.statusText}`);
   }
   // Successful deletion might return 200 or 204 with no body
+}
+
+export async function indexFile(
+  resourceId: string,
+  connectionId: string,
+  name: string,
+  description: string,
+  organizationId: string
+): Promise<void> {
+  const authHeaders = useAuthStore.getState().authHeaders;
+  if (!authHeaders) throw new Error("Not authenticated");
+
+  const response = await createKnowledgeBase(
+    connectionId,
+    [resourceId],
+    name,
+    description,
+    organizationId
+  );
+
+  if (!response) {
+    throw new Error("Failed to create knowledge base");
+  }
+}
+
+export async function deleteFile(
+  kbId: string,
+  resourcePath: string
+): Promise<void> {
+  const authHeaders = useAuthStore.getState().authHeaders;
+  if (!authHeaders) throw new Error("Not authenticated");
+
+  await removeFromKB(kbId, resourcePath);
+}
+
+export async function isFileIndexed(resourceId: string): Promise<boolean> {
+  const authHeaders = useAuthStore.getState().authHeaders;
+  if (!authHeaders) throw new Error("Not authenticated");
+
+  const kbId = useIndexingStore.getState().knowledgeBaseId;
+  if (!kbId) return false;
+
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/knowledge_bases/${kbId}/resources?resource_id=${resourceId}`,
+      {
+        headers: authHeaders,
+      }
+    );
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        return false;
+      }
+      throw new Error(`Failed to fetch index status: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data && data.length > 0;
+  } catch (error) {
+    console.error("Error checking index status:", error);
+    return false;
+  }
+}
+
+export async function removeFromKB(
+  kbId: string,
+  resourcePath: string
+): Promise<void> {
+  const authHeaders = useAuthStore.getState().authHeaders;
+  if (!authHeaders) throw new Error("Not authenticated");
+
+  const params = `?resource_path=${encodeURIComponent(resourcePath)}`;
+  console.log(
+    `🗑️ Removing resource from KB (KB: ${kbId}, path: ${resourcePath})`
+  );
+
+  const response = await fetch(
+    `${API_BASE_URL}/knowledge_bases/${kbId}/resources${params}`,
+    {
+      method: "DELETE",
+      headers: authHeaders,
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Failed to remove resource from knowledge base: ${response.statusText}`
+    );
+  }
+}
+
+export async function getCurrentOrgId(
+  headers: Record<string, string>
+): Promise<string> {
+  try {
+    console.log("🏢 Getting organization ID...");
+    const response = await fetch(`${API_BASE_URL}/organizations/me/current`, {
+      headers: {
+        ...headers,
+        accept: "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("❌ Org ID response error:", response.status, errorText);
+      throw new Error(
+        `Failed to get organization: ${response.status} - ${errorText}`
+      );
+    }
+
+    const data = await response.json();
+
+    if (!data.org_id) {
+      throw new Error("No organization ID received");
+    }
+
+    console.log("✅ Organization ID retrieved:", data.org_id);
+    useAuthStore.getState().setOrganizationId(data.org_id); // Store in AuthState
+    return data.org_id;
+  } catch (error) {
+    console.error("❌ Get org ID error:", error);
+    throw error;
+  }
 }
