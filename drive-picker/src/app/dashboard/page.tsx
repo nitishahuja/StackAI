@@ -134,9 +134,9 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       {/* Header */}
-      <header className="bg-white border-b">
+      <header className="bg-white border-b shadow-sm rounded-b-xl">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16 items-center">
             <div className="flex items-center">
@@ -155,10 +155,10 @@ export default function DashboardPage() {
                   value={connectionId}
                   onValueChange={handleConnectionChange}
                 >
-                  <SelectTrigger className="w-[200px] bg-gray-50">
+                  <SelectTrigger className="w-[200px] bg-gray-50 rounded-md border-gray-200 shadow-sm">
                     <SelectValue placeholder="Select connection" />
                   </SelectTrigger>
-                  <SelectContent className="bg-white border shadow-md">
+                  <SelectContent className="bg-white border shadow-md rounded-md">
                     {connections.map((conn) => (
                       <SelectItem
                         key={conn.connection_id}
@@ -193,9 +193,9 @@ export default function DashboardPage() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        <div className="bg-white rounded-lg shadow-sm border">
+        <div className="bg-white rounded-xl shadow-lg border border-gray-100">
           {/* Breadcrumbs */}
-          <div className="px-6 py-3 border-b bg-gray-50/50">
+          <div className="px-6 py-3 border-b bg-gray-50/80 rounded-t-xl">
             <div className="flex items-center space-x-1 text-sm text-gray-500">
               <Button
                 variant="link"

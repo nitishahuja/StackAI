@@ -33,14 +33,15 @@ import {
   ChevronRight,
   ChevronDown,
   FolderIcon,
-  FileIcon,
   ArrowUpDown,
   Loader2,
   Filter,
   PlusCircle,
   Trash2,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatFileSize } from "@/lib/utils";
+import { Tooltip } from "@/components/ui/tooltip";
+import { getFileIcon } from "@/lib/fileIcons";
 
 interface FilePickerProps {
   connectionId: string;
@@ -249,37 +250,37 @@ export function FilePicker({ connectionId }: FilePickerProps) {
   };
 
   return (
-    <Card className="overflow-hidden rounded-lg border shadow-sm bg-white">
+    <Card className="overflow-hidden rounded-xl border shadow bg-white">
       <CardContent className="p-0">
         {/* Filter and Search */}
-        <div className="flex items-center gap-2 px-4 py-3 border-b bg-gray-50/50">
+        <div className="flex items-center gap-2 px-4 py-2 border-b bg-gray-50/80">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 size="sm"
                 variant="outline"
                 className={cn(
-                  "pr-8 h-8 text-sm bg-white border border-gray-200 shadow-sm",
+                  "pr-8 h-8 text-sm bg-white border border-gray-200 shadow-sm font-medium rounded-md",
                   "relative z-10",
                   typeFilter !== "all" && "ring-2 ring-blue-200"
                 )}
               >
-                <Filter className="h-4 w-4 mr-2" />
+                <Filter className="h-5 w-5 mr-2 text-blue-500" />
                 {typeOptions.find((o) => o.value === typeFilter)?.label}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="start"
-              className="bg-white border border-gray-200 shadow-lg"
+              className="bg-white border border-gray-200 shadow-lg rounded-lg"
             >
               {typeOptions.map((option) => (
                 <DropdownMenuItem
                   key={option.value}
                   onClick={() => setTypeFilter(option.value)}
                   className={cn(
-                    "hover:bg-gray-100",
+                    "hover:bg-blue-50 transition-colors",
                     typeFilter === option.value &&
-                      "font-semibold bg-blue-50 text-blue-700"
+                      "font-semibold bg-blue-100 text-blue-700"
                   )}
                 >
                   {option.label}
@@ -292,41 +293,41 @@ export function FilePicker({ connectionId }: FilePickerProps) {
             placeholder="Search by name..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="h-8 text-sm max-w-xs border-gray-200"
+            className="h-8 text-sm max-w-xs border-gray-200 rounded-md shadow-sm focus:ring-2 focus:ring-blue-200"
           />
         </div>
 
         {/* File Table */}
-        <div className="rounded-b-lg overflow-hidden">
+        <div className="rounded-b-xl overflow-hidden">
           <Table>
-            <TableHeader className="bg-blue-100">
+            <TableHeader className="bg-blue-50">
               <TableRow>
                 <TableHead
-                  className="cursor-pointer pl-4 font-semibold text-gray-700"
+                  className="cursor-pointer pl-4 font-semibold text-gray-800 text-sm select-none"
                   onClick={() => handleSort("name")}
                 >
                   <div className="flex items-center">
                     Name
                     {sortBy === "name" && (
-                      <ArrowUpDown className="h-4 w-4 ml-2 text-gray-500" />
+                      <ArrowUpDown className="h-4 w-4 ml-2 text-blue-400" />
                     )}
                   </div>
                 </TableHead>
                 <TableHead
-                  className="cursor-pointer w-[150px] font-semibold text-gray-700"
+                  className="cursor-pointer w-[140px] font-semibold text-gray-800 text-sm select-none"
                   onClick={() => handleSort("date")}
                 >
                   <div className="flex items-center">
                     Date
                     {sortBy === "date" && (
-                      <ArrowUpDown className="h-4 w-4 ml-2 text-gray-500" />
+                      <ArrowUpDown className="h-4 w-4 ml-2 text-blue-400" />
                     )}
                   </div>
                 </TableHead>
-                <TableHead className="text-right w-[100px] font-semibold text-gray-700">
+                <TableHead className="text-right w-[90px] font-semibold text-gray-800 text-sm select-none">
                   Size/Type
                 </TableHead>
-                <TableHead className="text-right w-[100px] font-semibold text-gray-700">
+                <TableHead className="text-right w-[90px] font-semibold text-gray-800 text-sm select-none">
                   Action
                 </TableHead>
               </TableRow>
@@ -349,34 +350,33 @@ export function FilePicker({ connectionId }: FilePickerProps) {
                       }
                     }}
                     className={cn(
-                      "cursor-pointer hover:bg-blue-50 transition-colors",
-                      isLoading && "bg-gray-50/50",
+                      "cursor-pointer group hover:bg-blue-100/60 transition-colors duration-200",
+                      isLoading && "bg-gray-50/70",
                       indexedResourceIds.has(resource.resource_id) &&
-                        "bg-green-100"
+                        "bg-green-50"
                     )}
+                    style={{ transition: "background 0.2s" }}
                   >
                     <TableCell
-                      className="flex items-center py-2 text-sm"
-                      style={{ paddingLeft: `${24 + indent * 20}px` }}
+                      className="flex items-center py-2 text-sm font-medium text-gray-900"
+                      style={{ paddingLeft: `${20 + indent * 16}px` }}
                     >
                       {resource.inode_type === "directory" ? (
                         isLoading ? (
-                          <Loader2 className="h-4 w-4 mr-1 animate-spin text-blue-500" />
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin text-blue-500" />
                         ) : resource.isExpanded ? (
-                          <ChevronDown className="h-4 w-4 mr-1 text-gray-500" />
+                          <ChevronDown className="h-4 w-4 mr-2 text-blue-400" />
                         ) : (
-                          <ChevronRight className="h-4 w-4 mr-1 text-gray-500" />
+                          <ChevronRight className="h-4 w-4 mr-2 text-blue-400" />
                         )
                       ) : (
-                        <span className="w-5 h-5 mr-1" />
+                        <span className="w-5 h-5 mr-2" />
                       )}
 
-                      {resource.inode_type === "directory" ? (
-                        <FolderIcon className="h-5 w-5 mr-2 text-blue-500/90" />
-                      ) : (
-                        <FileIcon className="h-5 w-5 mr-2 text-gray-400" />
-                      )}
-                      <span className="truncate text-gray-700">
+                      {resource.inode_type === "directory"
+                        ? getFileIcon(resource)
+                        : getFileIcon(resource)}
+                      <span className="truncate text-gray-900 text-sm">
                         {resource.inode_path.path}
                       </span>
                     </TableCell>
@@ -389,76 +389,87 @@ export function FilePicker({ connectionId }: FilePickerProps) {
 
                     <TableCell className="text-sm text-gray-500 text-right">
                       {resource.inode_type === "file"
-                        ? resource.size
-                          ? `${(resource.size / 1024).toFixed(1)} KB`
-                          : "---"
+                        ? formatFileSize(resource.size)
                         : "Folder"}
                     </TableCell>
 
                     <TableCell className="text-sm text-gray-500 text-right">
                       {resource.inode_type === "file" && (
-                        <div className="flex items-center justify-end">
+                        <div className="flex items-center justify-end gap-1">
                           {!indexedResourceIds.has(resource.resource_id) ? (
-                            <button
-                              className="text-blue-500 hover:text-blue-700"
-                              onClick={async (e) => {
-                                e.stopPropagation();
-                                const orgId =
-                                  useAuthStore.getState().organizationId;
-                                if (!orgId) {
-                                  console.error(
-                                    "Organization ID is not available"
-                                  );
-                                  return;
-                                }
-                                setIndexingFileId(resource.resource_id);
-                                try {
-                                  const response = await createKnowledgeBase(
-                                    connectionId,
-                                    [resource.resource_id],
-                                    resource.inode_path.path,
-                                    "File indexed for search and retrieval",
-                                    orgId,
-                                    resource.dataloader_metadata
-                                      ?.content_mime ||
-                                      "application/octet-stream"
-                                  );
-                                  // Store the knowledge base ID in both the resource and the store
-                                  resource.knowledge_base_id =
-                                    response.knowledge_base_id;
-                                  setKnowledgeBaseId(
-                                    response.knowledge_base_id
-                                  );
-                                  addIndexedResource(resource.resource_id);
-                                } catch (error) {
-                                  console.error("Failed to index file:", error);
-                                } finally {
-                                  setIndexingFileId(null);
-                                }
-                              }}
-                              disabled={isIndexing}
+                            <Tooltip
+                              content="Index this file for search & retrieval"
+                              placement="right"
                             >
-                              {isIndexing ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <PlusCircle className="h-4 w-4" />
-                              )}
-                            </button>
+                              <button
+                                className="text-blue-500 hover:text-blue-700 rounded-full p-1 transition-colors duration-150 bg-blue-50 hover:bg-blue-100 shadow-sm"
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  const orgId =
+                                    useAuthStore.getState().organizationId;
+                                  if (!orgId) {
+                                    console.error(
+                                      "Organization ID is not available"
+                                    );
+                                    return;
+                                  }
+                                  setIndexingFileId(resource.resource_id);
+                                  try {
+                                    const response = await createKnowledgeBase(
+                                      connectionId,
+                                      [resource.resource_id],
+                                      resource.inode_path.path,
+                                      "File indexed for search and retrieval",
+                                      orgId,
+                                      resource.dataloader_metadata
+                                        ?.content_mime ||
+                                        "application/octet-stream"
+                                    );
+                                    // Store the knowledge base ID in both the resource and the store
+                                    resource.knowledge_base_id =
+                                      response.knowledge_base_id;
+                                    setKnowledgeBaseId(
+                                      response.knowledge_base_id
+                                    );
+                                    addIndexedResource(resource.resource_id);
+                                  } catch (error) {
+                                    console.error(
+                                      "Failed to index file:",
+                                      error
+                                    );
+                                  } finally {
+                                    setIndexingFileId(null);
+                                  }
+                                }}
+                                disabled={isIndexing}
+                              >
+                                {isIndexing ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <PlusCircle className="h-4 w-4" />
+                                )}
+                              </button>
+                            </Tooltip>
                           ) : (
-                            <button
-                              className="text-red-500 hover:text-red-700"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDelete(resource);
-                              }}
-                              disabled={isDeleting}
+                            <Tooltip
+                              content="Remove this file from the knowledge base"
+                              placement="right"
                             >
-                              {isDeleting ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <Trash2 className="h-4 w-4" />
-                              )}
-                            </button>
+                              <button
+                                className="text-red-500 hover:text-red-700 rounded-full p-1 transition-colors duration-150 bg-red-50 hover:bg-red-100 shadow-sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDelete(resource);
+                                }}
+                                disabled={isDeleting}
+                              >
+                                {isDeleting ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Trash2 className="h-4 w-4" />
+                                )}
+                              </button>
+                            </Tooltip>
                           )}
                         </div>
                       )}
@@ -470,9 +481,9 @@ export function FilePicker({ connectionId }: FilePickerProps) {
           </Table>
 
           {loadingRoot && (
-            <div className="text-center text-gray-400 py-12">
-              <Loader2 className="h-8 w-8 mx-auto mb-4 animate-spin text-blue-500" />
-              <p className="text-sm">Loading folder contents...</p>
+            <div className="text-center text-gray-400 py-16 animate-fade-in">
+              <Loader2 className="h-10 w-10 mx-auto mb-4 animate-spin text-blue-500" />
+              <p className="text-lg">Loading folder contents...</p>
             </div>
           )}
 
@@ -480,15 +491,15 @@ export function FilePicker({ connectionId }: FilePickerProps) {
             visibleResources.length === 0 &&
             !rootError &&
             !childrenError && (
-              <div className="text-center text-gray-400 py-12">
-                <FolderIcon className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                <p className="text-sm">No files or folders found here.</p>
+              <div className="text-center text-gray-400 py-16 animate-fade-in">
+                <FolderIcon className="h-14 w-14 mx-auto mb-4 text-gray-300" />
+                <p className="text-lg">No files or folders found here.</p>
               </div>
             )}
 
           {(rootError || childrenError) && (
-            <div className="text-center text-red-500 py-12">
-              <p className="text-sm">Failed to load folder contents.</p>
+            <div className="text-center text-red-500 py-16 animate-fade-in">
+              <p className="text-lg">Failed to load folder contents.</p>
             </div>
           )}
         </div>
