@@ -37,22 +37,28 @@ export default function HomePage() {
   };
 
   return (
-    <main className="flex items-center justify-center min-h-screen bg-gray-50">
-      <div className="w-full max-w-2xl p-8 space-y-8 bg-white rounded-lg shadow-md">
+    <main className="flex items-center justify-center min-h-screen bg-gray-50 px-4 sm:px-6 lg:px-8">
+      <div className="w-full max-w-md p-4 sm:p-8 space-y-6 sm:space-y-8 bg-white rounded-lg shadow-md">
         <div className="text-center">
-          <div className="flex justify-center mb-6">
+          <div className="flex justify-center mb-4 sm:mb-6">
             <Image
               src="/Logo.svg"
               alt="Stack AI Logo"
               width={215}
               height={50}
               priority
+              className="w-auto h-8 sm:h-12"
             />
           </div>
-          <p className="mt-2 text-gray-600">Please sign in to continue</p>
+          <p className="mt-2 text-sm sm:text-base text-gray-600">
+            Please sign in to continue
+          </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-8 space-y-6">
+        <form
+          onSubmit={handleSubmit}
+          className="mt-6 sm:mt-8 space-y-4 sm:space-y-6"
+        >
           {error && (
             <div className="p-3 text-sm text-red-500 bg-red-50 rounded-md">
               {error}
@@ -74,7 +80,7 @@ export default function HomePage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-black focus:border-black"
+                className="w-full px-3 py-2 mt-1 text-sm sm:text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-black focus:border-black"
                 placeholder="Enter your email"
               />
             </div>
@@ -93,7 +99,7 @@ export default function HomePage() {
                 required
                 value={password}
                 onChange={handlePasswordChange}
-                className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-black focus:border-black"
+                className="w-full px-3 py-2 mt-1 text-sm sm:text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-black focus:border-black"
                 placeholder="Enter your password"
               />
             </div>
@@ -102,7 +108,7 @@ export default function HomePage() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full px-4 py-2 text-white bg-black rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full px-4 py-2 text-sm sm:text-base text-white bg-black rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
           >
             {isLoading ? "Signing in..." : "Sign in"}
           </button>

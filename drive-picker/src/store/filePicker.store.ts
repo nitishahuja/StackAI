@@ -107,29 +107,13 @@ export const useFilePickerStore = create<FilePickerState>()(
 
           const wasExpanded = folder.isExpanded;
 
-          let updated = updateResourceInList(
+          const updated = updateResourceInList(
             state.resources,
             folderId,
             (res) => {
               res.isExpanded = !wasExpanded;
             }
           );
-
-          if (wasExpanded) {
-            const toRemove = new Set<string>();
-            const collectDescendants = (parentId: string) => {
-              updated.forEach((res) => {
-                if (res.parentId === parentId) {
-                  toRemove.add(res.resource_id);
-                  if (res.inode_type === "directory") {
-                    collectDescendants(res.resource_id);
-                  }
-                }
-              });
-            };
-            collectDescendants(folderId);
-            updated = updated.filter((res) => !toRemove.has(res.resource_id));
-          }
 
           return { resources: updated };
         }),

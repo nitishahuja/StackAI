@@ -1,79 +1,39 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 
 // API functions
-import { signOut, getGoogleDriveConnections } from "@/lib/api";
+import { signOut } from "@/lib/api";
 
 // Types
-import { GoogleDriveConnection } from "@/types";
 
 // Zustand Stores
 import { useAuthStore } from "@/store/auth.store";
-import { useFilePickerStore } from "@/store/filePicker.store";
 
 // UI Components
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardTitle,
-} from "@/components/ui/card";
-import { FolderIcon, LogOut, User } from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { LogOut, User, HardDrive } from "lucide-react";
 import { FilePicker } from "@/components/file-picker/FilePicker";
 
 export default function DashboardPage() {
   const router = useRouter();
 
   // --- Auth Store ---
-  const {
-    connectionId,
-    setConnectionId,
-    clearAuthInfo,
-    user: currentUser,
-  } = useAuthStore();
+  const { setConnectionId, clearAuthInfo, user: currentUser } = useAuthStore();
 
-  // --- File Picker Store ---
-  const { currentFolderId, breadcrumbs, navigateToFolder } =
-    useFilePickerStore();
-
-  // --- Local State ---
-  const [connections, setConnections] = useState<GoogleDriveConnection[]>([]);
-  const [loadingConnections, setLoadingConnections] = useState(true);
+  // --- Default Connection ID ---
+  const DEFAULT_CONNECTION_ID = "e171b021-8c00-4c3f-8a93-396095414f57";
 
   // --- Effects ---
-  const fetchConnections = useCallback(async () => {
-    try {
-      setLoadingConnections(true);
-      const conns = await getGoogleDriveConnections();
-      setConnections(conns);
-      if (!connectionId && conns.length > 0) {
-        setConnectionId(conns[0].connection_id);
-      }
-    } catch (error) {
-      console.error("Failed to fetch Google Drive connections:", error);
-    } finally {
-      setLoadingConnections(false);
-    }
-  }, [connectionId, setConnectionId]);
-
   useEffect(() => {
     if (!currentUser) {
       router.push("/");
       return;
     }
-    fetchConnections();
-  }, [fetchConnections, currentUser, router]);
+    setConnectionId(DEFAULT_CONNECTION_ID);
+  }, [currentUser, router, setConnectionId]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -81,111 +41,68 @@ export default function DashboardPage() {
     router.push("/");
   };
 
-  const handleConnectionChange = (newConnectionId: string) => {
-    setConnectionId(newConnectionId);
-    useFilePickerStore.getState().reset();
-  };
-
   // --- Render Logic ---
   if (!currentUser) {
     return null;
-  }
-
-  if (loadingConnections) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading connections...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (connections.length === 0) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Card className="w-full max-w-md mx-auto text-center">
-          <CardContent className="py-12">
-            <FolderIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <CardTitle className="text-xl mb-2">No Connections Found</CardTitle>
-            <CardDescription>
-              Please add a Google Drive connection in the Stack AI Workflow
-              builder.
-            </CardDescription>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (!connectionId) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Card className="w-full max-w-md mx-auto text-center">
-          <CardContent className="py-12">
-            <p className="text-gray-600">
-              No connection selected. Please select one from the dropdown.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    );
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       {/* Header */}
       <header className="bg-white border-b shadow-sm rounded-b-xl">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16 items-center">
-            <div className="flex items-center">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 sm:gap-0">
+            {/* Logo (always left on desktop) */}
+            <div className="flex flex-col items-center sm:flex-row sm:items-center w-full sm:w-auto">
               <Image
                 src="/Logo.svg"
                 alt="Stack AI"
                 width={120}
                 height={32}
-                className="h-8 w-auto"
+                className="h-8 w-auto max-w-[120px] sm:max-w-none mb-2 sm:mb-0"
               />
             </div>
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600">Connection:</span>
-                <Select
-                  value={connectionId}
-                  onValueChange={handleConnectionChange}
+            {/* Mobile user info and sign out */}
+            <div className="flex flex-col items-center w-full sm:hidden">
+              <div className="flex items-center gap-2 text-sm text-gray-700 bg-gray-50 px-3 py-2 rounded-lg shadow-sm w-full justify-center">
+                <User className="h-4 w-4 shrink-0" />
+                <span
+                  className="truncate max-w-[180px]"
+                  title={currentUser.email}
                 >
-                  <SelectTrigger className="w-[200px] bg-gray-50 rounded-md border-gray-200 shadow-sm">
-                    <SelectValue placeholder="Select connection" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white border shadow-md rounded-md">
-                    {connections.map((conn) => (
-                      <SelectItem
-                        key={conn.connection_id}
-                        value={conn.connection_id}
-                        className="hover:bg-gray-50"
-                      >
-                        {conn.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  {currentUser.email}
+                </span>
               </div>
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <User className="h-4 w-4" />
-                  <span>{currentUser.email}</span>
-                </div>
-                <Button
-                  onClick={handleSignOut}
-                  variant="ghost"
-                  size="sm"
-                  className="text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-                >
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Sign Out
-                </Button>
+              <div className="w-full flex justify-center my-2">
+                <div className="h-px bg-gray-200 w-2/3" />
               </div>
+              <Button
+                onClick={handleSignOut}
+                variant="outline"
+                size="lg"
+                className="w-full text-gray-700 border-gray-300 hover:bg-gray-100 shadow-sm"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Sign Out
+              </Button>
+            </div>
+            {/* Desktop user info and sign out */}
+            <div className="hidden sm:flex items-center gap-6">
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <User className="h-4 w-4 shrink-0" />
+                <span className="truncate max-w-xs" title={currentUser.email}>
+                  {currentUser.email}
+                </span>
+              </div>
+              <Button
+                onClick={handleSignOut}
+                variant="ghost"
+                size="sm"
+                className="text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Sign Out
+              </Button>
             </div>
           </div>
         </div>
@@ -194,42 +111,21 @@ export default function DashboardPage() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         <div className="bg-white rounded-xl shadow-lg border border-gray-100">
-          {/* Breadcrumbs */}
-          <div className="px-6 py-3 border-b bg-gray-50/80 rounded-t-xl">
-            <div className="flex items-center space-x-1 text-sm text-gray-500">
-              <Button
-                variant="link"
-                size="sm"
-                onClick={() => navigateToFolder(null, "Root")}
-                disabled={currentFolderId === null}
-                className="p-0 h-auto hover:text-gray-900"
-              >
-                Root
-              </Button>
-              {breadcrumbs
-                .filter((crumb) => crumb.id !== null)
-                .map((crumb, index) => (
-                  <span key={crumb.id} className="flex items-center">
-                    <span className="mx-2 text-gray-400">/</span>
-                    <Button
-                      variant="link"
-                      size="sm"
-                      onClick={() => navigateToFolder(crumb.id, crumb.name)}
-                      disabled={
-                        index ===
-                        breadcrumbs.filter((c) => c.id !== null).length - 1
-                      }
-                      className="p-0 h-auto hover:text-gray-900"
-                    >
-                      {crumb.name}
-                    </Button>
-                  </span>
-                ))}
-            </div>
+          {/* Source Integration Header Bar */}
+          <div className="flex items-center justify-between px-6 py-3 border-b bg-gray-50/80 rounded-t-xl">
+            <span className="text-lg font-semibold text-gray-800">
+              Source Integration
+            </span>
+            <span className="flex items-center gap-2">
+              <HardDrive size={28} className="text-blue-500" />
+              <span className="text-base font-bold text-gray-700">
+                Google Drive
+              </span>
+            </span>
           </div>
 
           {/* File Picker */}
-          <FilePicker connectionId={connectionId} />
+          <FilePicker connectionId={DEFAULT_CONNECTION_ID} />
         </div>
       </main>
     </div>

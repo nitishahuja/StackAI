@@ -19,6 +19,12 @@ export const metadata: Metadata = {
     icon: "/logo-favicon.png",
     apple: "/logo-favicon.png",
   },
+  viewport: {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false,
+  },
 };
 
 export default function RootLayout({
@@ -32,10 +38,10 @@ export default function RootLayout({
         <link rel="icon" href="/logo-favicon.svg" type="image/svg+xml" />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen`}
         suppressHydrationWarning
       >
-        {children}
+        <div className="flex flex-col min-h-screen">{children}</div>
       </body>
     </html>
   );
