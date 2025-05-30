@@ -157,7 +157,15 @@ export function FilePicker({ connectionId }: FilePickerProps) {
     setKnowledgeBaseId,
     setIndexingStatus,
     getIndexingStatus,
+    queueIndexing,
+    queueRemoving,
+    indexQueue,
+    removeQueue,
+    processNextIndexing,
+    processNextRemoving,
   } = useIndexingStore();
+
+  const setIndexingStore = useIndexingStore.setState;
 
   // Track which folders have been prefetched to avoid duplicate fetches
   const prefetchedFolders = useRef<Set<string>>(new Set());
@@ -266,25 +274,88 @@ export function FilePicker({ connectionId }: FilePickerProps) {
     }
   };
 
-  const handleDelete = async (resource: FileResourceWithExpanded) => {
-    const kbId = useIndexingStore.getState().knowledgeBaseId;
-    if (!kbId) {
-      console.error("Knowledge Base ID is not available");
-      return;
-    }
-    setIndexingStatus(resource.resource_id, "removing");
-    setDeletingFileId(resource.resource_id);
-    try {
-      await removeFromKB(kbId, resource.inode_path.path);
-      removeIndexedResource(resource.resource_id);
-      setIndexingStatus(resource.resource_id, "idle");
-    } catch (error) {
-      setIndexingStatus(resource.resource_id, "error");
-      console.error("Failed to remove file:", error);
-    } finally {
-      setDeletingFileId(null);
-    }
+  const handleDelete = (resource: FileResourceWithExpanded) => {
+    queueRemoving(resource.resource_id);
   };
+
+  // Effect to process the remove queue
+  useEffect(() => {
+    if (removeQueue.length === 0) return;
+    const resourceId = removeQueue[0];
+    if (getIndexingStatus(resourceId) !== "removing") return;
+    const doRemove = async () => {
+      setDeletingFileId(resourceId);
+      const kbId = useIndexingStore.getState().knowledgeBaseId;
+      if (!kbId) {
+        setIndexingStatus(resourceId, "error");
+        processNextRemoving();
+        setDeletingFileId(null);
+        return;
+      }
+      try {
+        await removeFromKB(
+          kbId,
+          allResources.find((r) => r.resource_id === resourceId)?.inode_path
+            .path || ""
+        );
+        removeIndexedResource(resourceId);
+        setIndexingStatus(resourceId, "idle");
+      } catch (error) {
+        setIndexingStatus(resourceId, "error");
+        console.error("Failed to remove file:", error);
+      } finally {
+        setDeletingFileId(null);
+        setIndexingStore((state) => ({
+          removeQueue: state.removeQueue.slice(1),
+        }));
+        processNextRemoving();
+      }
+    };
+    doRemove();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [removeQueue, getIndexingStatus]);
+
+  // Effect to process the index queue
+  useEffect(() => {
+    if (indexQueue.length === 0) return;
+    const resourceId = indexQueue[0];
+    if (getIndexingStatus(resourceId) !== "indexing") return;
+    const doIndex = async () => {
+      const orgId = useAuthStore.getState().organizationId;
+      if (!orgId) {
+        setIndexingStatus(resourceId, "error");
+        processNextIndexing();
+        return;
+      }
+      try {
+        const resource = allResources.find((r) => r.resource_id === resourceId);
+        if (!resource) throw new Error("Resource not found");
+        const response = await createKnowledgeBase(
+          connectionId,
+          [resource.resource_id],
+          resource.inode_path.path,
+          "File indexed for search and retrieval",
+          orgId,
+          resource.dataloader_metadata?.content_mime ||
+            "application/octet-stream"
+        );
+        resource.knowledge_base_id = response.knowledge_base_id;
+        setKnowledgeBaseId(response.knowledge_base_id);
+        addIndexedResource(resource.resource_id);
+        setIndexingStatus(resource.resource_id, "done");
+      } catch (error) {
+        setIndexingStatus(resourceId, "error");
+        console.error("Failed to index file:", error);
+      } finally {
+        setIndexingStore((state) => ({
+          indexQueue: state.indexQueue.slice(1),
+        }));
+        processNextIndexing();
+      }
+    };
+    doIndex();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [indexQueue, getIndexingStatus]);
 
   const checkIndexStatus = useCallback(
     async (resourceId: string) => {
@@ -601,59 +672,9 @@ export function FilePicker({ connectionId }: FilePickerProps) {
                                     >
                                       <button
                                         className="text-blue-500 hover:text-blue-700 rounded-full p-1 transition-colors duration-150 bg-blue-50 hover:bg-blue-100 shadow-sm"
-                                        onClick={async (e) => {
+                                        onClick={(e) => {
                                           e.stopPropagation();
-                                          const orgId =
-                                            useAuthStore.getState()
-                                              .organizationId;
-                                          if (!orgId) {
-                                            console.error(
-                                              "Organization ID is not available"
-                                            );
-                                            return;
-                                          }
-                                          setIndexingStatus(
-                                            resource.resource_id,
-                                            "queued"
-                                          );
-                                          try {
-                                            setIndexingStatus(
-                                              resource.resource_id,
-                                              "indexing"
-                                            );
-                                            const response =
-                                              await createKnowledgeBase(
-                                                connectionId,
-                                                [resource.resource_id],
-                                                resource.inode_path.path,
-                                                "File indexed for search and retrieval",
-                                                orgId,
-                                                resource.dataloader_metadata
-                                                  ?.content_mime ||
-                                                  "application/octet-stream"
-                                              );
-                                            resource.knowledge_base_id =
-                                              response.knowledge_base_id;
-                                            setKnowledgeBaseId(
-                                              response.knowledge_base_id
-                                            );
-                                            addIndexedResource(
-                                              resource.resource_id
-                                            );
-                                            setIndexingStatus(
-                                              resource.resource_id,
-                                              "done"
-                                            );
-                                          } catch (error) {
-                                            setIndexingStatus(
-                                              resource.resource_id,
-                                              "error"
-                                            );
-                                            console.error(
-                                              "Failed to index file:",
-                                              error
-                                            );
-                                          }
+                                          queueIndexing(resource.resource_id);
                                         }}
                                         disabled={
                                           getIndexingStatus(
